@@ -191,4 +191,29 @@ public class CyclisteSetupTools : EditorWindow
         AssetDatabase.SaveAssets();
         Debug.Log($"CyclisteSetupTools: [OPTION 4] Injecté AIBikeFullAutonomous sur {modifications} prefabs. Les cyclistes IA gèrent maintenant TOUT eux-mêmes !");
     }
+
+    [MenuItem("Projet 2/5. Convert Player Bicycle to Full AI (OPTION 4 EASY BIKE)")]
+    public static void SetupPhase5_EasyBikeAI()
+    {
+        GameObject playerBike = GameObject.Find("Player_Bicycle");
+        if (playerBike == null)
+        {
+            Debug.LogError("CyclisteSetupTools: Player_Bicycle introuvable ! Lancez d'abord l'Option 1.");
+            return;
+        }
+
+        // Désactiver contrôle manuel
+        BikeControlsExample manual = playerBike.GetComponent<BikeControlsExample>();
+        if (manual != null)
+        {
+            manual.controllingBike = false;
+            manual.enabled = false;
+        }
+
+        // Injecter le contrôleur IA Easy Bike (si pas déjà présent)
+        if (playerBike.GetComponent<AIBikeEasyController>() == null)
+            playerBike.AddComponent<AIBikeEasyController>();
+
+        Debug.Log("CyclisteSetupTools: [OPTION 5] Player_Bicycle converti en vélo IA autonome ! Le vélo avance seul et esquive les obstacles.");
+    }
 }
