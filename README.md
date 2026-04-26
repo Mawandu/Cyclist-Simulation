@@ -1,7 +1,7 @@
 # 🚴 Cyclist Simulation — Projet 2
 
 **Équipe :** MAWANDU HAMBA Héritier · Landry IRUMVA · Berthé KADIDIATOU
-**Cours :** Simulation & Agents Intelligents — Avril 2026
+**Cours :** Réalité Virtuelle
 
 ---
 
