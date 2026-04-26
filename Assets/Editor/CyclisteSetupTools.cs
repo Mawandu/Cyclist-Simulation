@@ -155,4 +155,40 @@ public class CyclisteSetupTools : EditorWindow
 
         Debug.Log($"CyclisteSetupTools: Attached AIBikeObstacleAvoidance to {modifications} AI Bicycle Prefabs. Phase 3 triggers are now active!");
     }
+
+    [MenuItem("Projet 2/4. Full Autonomous AI (Phase 4 — BONUS)")]
+    public static void SetupPhase4()
+    {
+        // Tag player if present
+        GameObject playerBike = GameObject.Find("Player_Bicycle");
+        if (playerBike != null && playerBike.tag != "Player")
+            playerBike.tag = "Player";
+
+        string[] bikePrefabs = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/UTS_FullPack" });
+        int modifications = 0;
+
+        foreach (string guid in bikePrefabs)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab != null && prefab.GetComponent<BcycleGyroController>() != null)
+            {
+                // Retirer l'ancien script d'esquive si présent (remplacé par la version complète)
+                AIBikeObstacleAvoidance old = prefab.GetComponent<AIBikeObstacleAvoidance>();
+                if (old != null)
+                    DestroyImmediate(old, true);
+
+                // Injecter la version totalement autonome
+                if (prefab.GetComponent<AIBikeFullAutonomous>() == null)
+                {
+                    prefab.AddComponent<AIBikeFullAutonomous>();
+                    EditorUtility.SetDirty(prefab);
+                    modifications++;
+                }
+            }
+        }
+
+        AssetDatabase.SaveAssets();
+        Debug.Log($"CyclisteSetupTools: [OPTION 4] Injecté AIBikeFullAutonomous sur {modifications} prefabs. Les cyclistes IA gèrent maintenant TOUT eux-mêmes !");
+    }
 }
