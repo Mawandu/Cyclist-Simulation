@@ -2,60 +2,51 @@ using UnityEngine;
 using rayzngames;
 
 /// <summary>
-/// Option 4 (Vélo Easy Bike en mode IA autonome)
-/// Ce script pilote le BicycleVehicle exactement comme un joueur humain,
-/// mais de manière totalement autonome :
-///   - Il avance toujours (verticalInput = 1)
-///   - Il vire en calculant un angle vers une cible (horizontalInput)
-///   - Il freine si un obstacle est trop proche (verticalInput < 0)
-///   - Il désactive BikeControlsExample pour éviter le conflit clavier
-/// Usage : attachez ce script sur le même objet que BicycleVehicle.
+/// IA simple et stable pour BicycleVehicle (Easy Bike System).
+/// Stratégie : avancer tout droit (verticalInput = 1 en permanence).
+/// Esquive seulement si un obstacle est détecté devant.
+/// Désactive BikeControlsExample pour éviter les conflits.
 /// </summary>
 [RequireComponent(typeof(BicycleVehicle))]
 public class AIBikeEasyController : MonoBehaviour
 {
-    [Header("IA Navigation")]
-    [Tooltip("Objet ou point que le vélo IA doit rejoindre/suivre")]
-    public Transform target;
-    [Tooltip("Angle de correction de direction maximum")]
-    public float steeringStrength = 0.7f;
+    [Header("Conduite")]
+    [Range(0.1f, 1f)]
+    public float throttle = 0.8f;          // Pédale (avant = positif)
 
     [Header("Détection Obstacles")]
-    public float detectionDistance = 12f;
-    public float sphereRadius      = 1.5f;
+    public float detectionDistance = 10f;
+    public float sphereRadius      = 1.2f;
 
-    [Header("Conduite")]
-    public float normalThrottle    = 0.7f;   // Pédale normale (0–1)
-    public float brakeThrottle     = -0.5f;  // Freinage
-    public float emergencyBrake    = -1f;    // Frein maximum
+    [Header("Esquive")]
+    [Range(0.1f, 1f)]
+    public float dodgeStrength     = 0.5f;  // Force de virage lors de l'esquive
 
-    // ── Privé ───────────────────────────────────────────────────
-    private BicycleVehicle bike;
-    private BikeControlsExample manualControls;
-    private Color gizmoColor = Color.green;
+    private BicycleVehicle      bike;
+    private BikeControlsExample manual;
+    private Color               gizmoColor = Color.green;
+    private float               steer      = 0f;
 
     // ══════════════════════════════════════════════════════════════
     void Start()
     {
-        bike = GetComponent<BicycleVehicle>();
+        bike   = GetComponent<BicycleVehicle>();
+        manual = GetComponent<BikeControlsExample>();
 
-        // Désactiver le contrôle clavier pour laisser l'IA prendre la main
-        manualControls = GetComponent<BikeControlsExample>();
-        if (manualControls != null)
+        // Couper le contrôle manuel proprement
+        if (manual != null)
         {
-            manualControls.controllingBike = false;
-            manualControls.enabled = false;
+            manual.controllingBike = false;
+            manual.enabled         = false;
         }
 
         bike.InControl(true);
     }
 
-    void Update()
+    void FixedUpdate()
     {
-        float throttle  = normalThrottle;
-        float steering  = 0f;
+        steer = 0f;
 
-        // ── Détection obstacle frontal ───────────────────────────
         RaycastHit hit;
         Vector3 origin = transform.position + Vector3.up * 0.5f;
 
@@ -64,42 +55,33 @@ public class AIBikeEasyController : MonoBehaviour
         if (Physics.SphereCast(origin, sphereRadius,
                                transform.forward, out hit, detectionDistance))
         {
+            // Ignore ses propres parties
             if (!hit.transform.IsChildOf(transform))
             {
                 float dist = hit.distance;
+                gizmoColor = Color.red;
 
                 if (dist < 3f)
                 {
-                    // Arrêt d'urgence
-                    throttle   = emergencyBrake;
-                    gizmoColor = Color.red;
+                    // Arrêt total
+                    bike.verticalInput   = -1f;
+                    bike.horizontalInput = 0f;
+                    return;
                 }
-                else if (dist < 8f)
-                {
-                    // Freinage + esquive
-                    throttle   = brakeThrottle;
-                    gizmoColor = Color.red;
 
-                    // Virer du côté libre
-                    Vector3 right = transform.right;
-                    Vector3 toObs = (hit.point - transform.position).normalized;
-                    float dot     = Vector3.Dot(right, toObs);
-                    steering      = dot > 0 ? -steeringStrength : steeringStrength;
-                }
+                // Calculer de quel côté l'obstacle se trouve
+                Vector3 right = transform.right;
+                Vector3 toObs = (hit.point - transform.position).normalized;
+                float   dot   = Vector3.Dot(right, toObs);
+
+                // Esquiver du côté opposé
+                steer = dot > 0 ? -dodgeStrength : dodgeStrength;
             }
         }
 
-        // ── Suivi de cible (si définie) ─────────────────────────
-        if (gizmoColor == Color.green && target != null)
-        {
-            Vector3 toTarget  = (target.position - transform.position).normalized;
-            float   angle     = Vector3.SignedAngle(transform.forward, toTarget, Vector3.up);
-            steering = Mathf.Clamp(angle / 45f, -1f, 1f) * steeringStrength;
-        }
-
-        // ── Appliquer les entrées comme un joueur virtuel ────────
-        bike.horizontalInput = steering;
+        // Appliquer : toujours avancer, parfois virer
         bike.verticalInput   = throttle;
+        bike.horizontalInput = steer;
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -109,11 +91,5 @@ public class AIBikeEasyController : MonoBehaviour
         Gizmos.DrawWireSphere(transform.position + Vector3.up * 0.5f, sphereRadius);
         Gizmos.DrawRay(transform.position + Vector3.up * 0.5f,
                        transform.forward * detectionDistance);
-
-        if (target != null)
-        {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(transform.position, target.position);
-        }
     }
 }
