@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 13e5090fe34f91246931caaea16d2962
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 59820
+  packageName: Population System PRO
+  packageVersion: 1.4
+  assetPath: Assets/Pop System 2018/Scripts/Paths/AudiencePath.cs
+  uploadId: 261155

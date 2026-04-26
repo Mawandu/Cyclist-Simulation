@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: abe990a6e5c995445a58f3cc9e60780f
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 59820
+  packageName: Population System PRO
+  packageVersion: 1.4
+  assetPath: Assets/Pop System 2018/Editor/PeopleWalkPathEditor.cs
+  uploadId: 261155

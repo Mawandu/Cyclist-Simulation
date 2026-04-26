@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: ee99ce1de9a308143b108547b749261f
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 59820
+  packageName: Population System PRO
+  packageVersion: 1.4
+  assetPath: Assets/Pop System 2018/Scripts/Paths/WalkPath.cs
+  uploadId: 261155

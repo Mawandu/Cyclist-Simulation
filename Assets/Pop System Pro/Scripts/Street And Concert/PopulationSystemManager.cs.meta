@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 9c7705d6f4fd4f04cba9376f0ad5e040
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 59820
+  packageName: Population System PRO
+  packageVersion: 1.4
+  assetPath: Assets/Pop System 2018/Scripts/Street And Concert/PopulationSystemManager.cs
+  uploadId: 261155

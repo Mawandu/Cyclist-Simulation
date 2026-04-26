@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 9f8370fa99fff594b96e32bbf92e5e0f
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 59820
+  packageName: Population System PRO
+  packageVersion: 1.4
+  assetPath: Assets/Pop System 2018/Scripts/Street And Concert/StandingPeopleStreet.cs
+  uploadId: 261155

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 0b96ea4ae0398da48b96b4c87e2634d7
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 59820
+  packageName: Population System PRO
+  packageVersion: 1.4
+  assetPath: Assets/Pop System 2018/Scripts/Camera/MouseLookAdvanced.cs
+  uploadId: 261155
