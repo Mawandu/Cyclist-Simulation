@@ -3,218 +3,173 @@ using System.Collections;
 
 /// <summary>
 /// Option 4 — Cycliste IA Totalement Autonome
-/// Ce script gère TOUS les comportements du vélo de l'IA :
-///   1. Freinage automatique dans les virages
-///   2. Détection et esquive des obstacles frontaux
-///   3. Arrêt d'urgence + détection de bord de route (sol absent)
-///   4. Redémarrage progressif (Coroutine lissée)
-///   5. Gizmos de débogage visuel (vert = libre, rouge = bloqué)
+/// Stratégie : UTS_MovePath gère le déplacement de base.
+/// Ce script INTERCEPTE uniquement pour :
+///   - Freinage dans les virages
+///   - Esquive d'obstacles
+///   - Arrêt d'urgence + redémarrage progressif
+/// Il ne démarre PAS le vélo lui-même (UTS le fait).
 /// </summary>
-[RequireComponent(typeof(BcycleGyroController))]
 public class AIBikeFullAutonomous : MonoBehaviour
 {
     [Header("Détection Obstacles")]
-    public float detectionDistance = 15f;
-    public float sphereRadius = 2f;
-
-    [Header("Détection Sol")]
-    public float groundRayLength = 2f;
+    public float detectionDistance  = 15f;
+    public float sphereRadius       = 2f;
 
     [Header("Vitesses")]
-    public float normalSpeedMultiplier = 1f;
-    public float curveSpeedMultiplier  = 0.6f;
-    public float obstacleSlowMultiplier = 0.4f;
+    [Range(0.1f, 1f)] public float curveSpeedFactor    = 0.6f;
+    [Range(0.1f, 1f)] public float obstacleSlowFactor  = 0.4f;
 
     [Header("Esquive")]
-    public float maxDodgeOffset = 2.5f;
-    public float dodgeSpeed = 5f;
+    public float maxDodgeOffset     = 2.5f;
+    public float dodgeSpeed         = 5f;
 
     [Header("Redémarrage")]
-    public float restartDelay = 1.5f;      // Secondes d'attente avant relance
-    public float restartAccelTime = 2f;    // Secondes pour revenir à pleine vitesse
+    public float restartDelay       = 1.0f;
+    public float restartAccelTime   = 2.0f;
 
-    // ── Privé ───────────────────────────────────────────────────────────────
-    private BcycleGyroController controller;
-    private float originalSpeed;
-    private Vector3 dodgeOffset;
-    private bool isRestarting;
-    private bool isStopped;
+    // ── Privé ─────────────────────────────────────────────────────
+    private BcycleGyroController ctrl;
+    private float                originalSpeed;
+    private Vector3              dodgeOffset;
+    private bool                 isRestarting;
+    private Color                gizmoColor = Color.green;
 
-    // ── État de débogage (couleur Gizmo) ────────────────────────────────────
-    private Color gizmoColor = Color.green;
-
-    // ────────────────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════
     void Start()
     {
-        controller    = GetComponent<BcycleGyroController>();
-        originalSpeed = controller.moveSpeed;
+        ctrl          = GetComponent<BcycleGyroController>();
+        originalSpeed = ctrl.moveSpeed;
+        // Ne pas toucher à tempStop ici — UTS démarre seul
     }
 
     void Update()
     {
         if (isRestarting) return;
 
-        bool groundOk      = CheckGround();
-        bool obstacleAhead = false;
-        float obstacleDist = detectionDistance;
-
+        // ── Raycast obstacle frontal ─────────────────────────────
         RaycastHit hit;
-        Vector3 origin = transform.position + Vector3.up * 0.5f + transform.forward * 1.5f;
+        Vector3 origin = transform.position + Vector3.up * 0.5f
+                       + transform.forward * 1.5f;
 
-        if (Physics.SphereCast(origin, sphereRadius, transform.forward, out hit, detectionDistance))
+        bool obstacleAhead = false;
+        float obstDist     = detectionDistance;
+
+        if (Physics.SphereCast(origin, sphereRadius, transform.forward,
+                               out hit, detectionDistance))
         {
-            // Ignorer ses propres enfants
             if (!hit.transform.IsChildOf(transform))
             {
-                bool isPhysical = hit.transform.GetComponentInParent<Rigidbody>() != null;
-                bool isTagged   = hit.transform.CompareTag("Car")      ||
-                                  hit.transform.CompareTag("Bcycle")   ||
-                                  hit.transform.CompareTag("Player")   ||
-                                  hit.transform.CompareTag("Obstacle");
+                bool tagged    = hit.transform.CompareTag("Car")
+                              || hit.transform.CompareTag("Bcycle")
+                              || hit.transform.CompareTag("Player")
+                              || hit.transform.CompareTag("Obstacle");
+                bool hasRigid  = hit.transform.GetComponentInParent<Rigidbody>() != null;
 
-                if (isPhysical || isTagged)
+                if (tagged || hasRigid)
                 {
                     obstacleAhead = true;
-                    obstacleDist  = hit.distance;
+                    obstDist      = hit.distance;
                 }
             }
         }
 
-        // ── 1. Sol absent → Arrêt total ─────────────────────────────────────
-        if (!groundOk)
+        // ── Arrêt d'urgence ─────────────────────────────────────
+        if (obstacleAhead && obstDist < 4f)
         {
-            EmergencyStop("Bord de route détecté !");
+            if (!ctrl.tempStop)
+            {
+                ctrl.tempStop  = true;
+                ctrl.moveSpeed = 0f;
+                var rb = GetComponent<Rigidbody>();
+                if (rb) rb.linearVelocity = Vector3.zero;
+                StartCoroutine(RestartRoutine());
+            }
+            gizmoColor = Color.red;
             return;
         }
 
-        // ── 2. Obstacle très proche → Arrêt d'urgence ───────────────────────
-        if (obstacleAhead && obstacleDist < 4f)
-        {
-            EmergencyStop("Obstacle immédiat !");
-            return;
-        }
+        ctrl.tempStop = false;
 
-        isStopped = false;
-
-        // ── 3. Obstacle loin → Ralentir + Esquiver ──────────────────────────
+        // ── Obstacle loin → ralentir + esquiver ─────────────────
         if (obstacleAhead)
         {
             gizmoColor = Color.red;
 
-            // Calculer côté d'esquive (produit scalaire)
-            Vector3 right = transform.right;
-            Vector3 toObstacle = (hit.point - transform.position).normalized;
-            float dot = Vector3.Dot(right, toObstacle);
-            float dodgeDir = dot > 0 ? -1f : 1f;
+            Vector3 right    = transform.right;
+            Vector3 toObs    = (hit.point - transform.position).normalized;
+            float   dot      = Vector3.Dot(right, toObs);
+            float   dodgeDir = dot > 0 ? -1f : 1f;
 
             dodgeOffset = Vector3.Lerp(dodgeOffset,
-                right * dodgeDir * maxDodgeOffset,
-                Time.deltaTime * dodgeSpeed);
+                              right * dodgeDir * maxDodgeOffset,
+                              Time.deltaTime * dodgeSpeed);
             dodgeOffset = Vector3.ClampMagnitude(dodgeOffset, maxDodgeOffset);
 
-            controller.moveSpeed = Mathf.Lerp(controller.moveSpeed,
-                originalSpeed * obstacleSlowMultiplier,
-                Time.deltaTime * 3f);
+            ctrl.moveSpeed = Mathf.Lerp(ctrl.moveSpeed,
+                                 originalSpeed * obstacleSlowFactor,
+                                 Time.deltaTime * 3f);
         }
         else
         {
-            // ── 4. Détection virage (angle entre forward et prochain waypoint) ──
-            float curveAngle = DetectCurveAngle();
-            gizmoColor = Color.green;
+            // ── Virage : angle entre forward et prochain cap ─────
+            float turnAngle = Vector3.Angle(transform.forward,
+                                 transform.parent != null
+                                     ? transform.parent.forward
+                                     : transform.forward);
 
-            if (curveAngle > 30f)
+            if (turnAngle > 30f)
             {
-                // Virage serré → freinage préventif
-                gizmoColor = Color.yellow;
-                controller.moveSpeed = Mathf.Lerp(controller.moveSpeed,
-                    originalSpeed * curveSpeedMultiplier,
-                    Time.deltaTime * 2f);
+                gizmoColor     = Color.yellow;
+                ctrl.moveSpeed = Mathf.Lerp(ctrl.moveSpeed,
+                                     originalSpeed * curveSpeedFactor,
+                                     Time.deltaTime * 2f);
             }
             else
             {
-                // Route droite → reprendre pleine vitesse
-                controller.moveSpeed = Mathf.Lerp(controller.moveSpeed,
-                    originalSpeed * normalSpeedMultiplier,
-                    Time.deltaTime * 2f);
+                gizmoColor     = Color.green;
+                ctrl.moveSpeed = Mathf.Lerp(ctrl.moveSpeed,
+                                     originalSpeed,
+                                     Time.deltaTime * 2f);
             }
 
-            dodgeOffset = Vector3.Lerp(dodgeOffset, Vector3.zero, Time.deltaTime * dodgeSpeed);
+            // Revenir sur la trajectoire d'origine
+            dodgeOffset = Vector3.Lerp(dodgeOffset,
+                              Vector3.zero, Time.deltaTime * dodgeSpeed);
         }
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    bool CheckGround()
-    {
-        return Physics.Raycast(transform.position + Vector3.up * 0.3f,
-                               Vector3.down, groundRayLength);
-    }
-
-    float DetectCurveAngle()
-    {
-        // Estimer le prochain virage à partir du prochain waypoint UTS
-        var movePath = GetComponent<UTS_MovePath>();
-        if (movePath == null) return 0f;
-
-        // On regarde la direction du chemin dans 3 secondes
-        Vector3 futurePos = transform.position + transform.forward * controller.moveSpeed * 3f;
-        Vector3 toCurrent = (futurePos - transform.position).normalized;
-        return Vector3.Angle(transform.forward, toCurrent);
-    }
-
-    void EmergencyStop(string reason)
-    {
-        if (!isStopped)
-        {
-            isStopped = true;
-            gizmoColor = Color.red;
-            Debug.Log($"[AIBikeAutonomous] STOP — {reason}");
-
-            controller.moveSpeed = 0f;
-            controller.tempStop  = true;
-
-            var rb = GetComponent<Rigidbody>();
-            if (rb != null) rb.linearVelocity = Vector3.zero;
-
-            if (!isRestarting)
-                StartCoroutine(RestartRoutine());
-        }
-    }
-
+    // ══════════════════════════════════════════════════════════════
     IEnumerator RestartRoutine()
     {
         isRestarting = true;
-        gizmoColor = Color.yellow;
+        gizmoColor   = Color.yellow;
 
         yield return new WaitForSeconds(restartDelay);
 
-        // Relance progressive
+        ctrl.tempStop = false;
         float elapsed = 0f;
-        controller.tempStop = false;
-        gizmoColor = Color.green;
 
         while (elapsed < restartAccelTime)
         {
             elapsed += Time.deltaTime;
-            float t = elapsed / restartAccelTime;
-            controller.moveSpeed = Mathf.Lerp(0f, originalSpeed, t);
+            ctrl.moveSpeed = Mathf.Lerp(0f, originalSpeed,
+                                        elapsed / restartAccelTime);
             yield return null;
         }
 
-        controller.moveSpeed = originalSpeed;
-        isStopped    = false;
-        isRestarting = false;
+        ctrl.moveSpeed = originalSpeed;
+        isRestarting   = false;
+        gizmoColor     = Color.green;
     }
 
-    // ────────────────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════
     void OnDrawGizmos()
     {
         Gizmos.color = gizmoColor;
-        Vector3 origin = transform.position + Vector3.up * 0.5f + transform.forward * 1.5f;
+        Vector3 origin = transform.position + Vector3.up * 0.5f
+                       + transform.forward * 1.5f;
         Gizmos.DrawWireSphere(origin, sphereRadius);
         Gizmos.DrawRay(origin, transform.forward * detectionDistance);
-
-        // Raycast sol
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawRay(transform.position + Vector3.up * 0.3f, Vector3.down * groundRayLength);
     }
 }
