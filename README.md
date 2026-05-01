@@ -1,19 +1,19 @@
-# 🚴 Cyclist Simulation — Projet 2
+# Cyclist Simulation — Projet 2
 
 **Équipe :** MAWANDU HAMBA Héritier · Landry IRUMVA · Berthé KADIDIATOU
 **Cours :** Réalité Virtuelle
 
 ---
 
-## 🎯 Description du projet
+## Description du projet
 
 Simulation urbaine interactive sous **Unity** où un joueur pilote un vélo au cœur d'une ville animée par des cyclistes autonomes (IA). L'IA détecte les obstacles et réagit dynamiquement (ralentissement, esquive, arrêt d'urgence).
 
 ---
 
-## 📦 Packages requis (à importer manuellement dans Unity)
+## Packages requis (à importer manuellement dans Unity)
 
-> ⚠️ Ces assets volumineux ne sont **pas** inclus dans ce dépôt. Chaque membre doit les importer.
+>  Ces assets volumineux ne sont **pas** inclus dans ce dépôt. Chaque membre doit les importer.
 
 | Package | Rôle |
 |---|---|
@@ -23,7 +23,7 @@ Simulation urbaine interactive sous **Unity** où un joueur pilote un vélo au c
 
 ---
 
-## 🗂️ Structure du code (fichiers créés par notre équipe)
+##  Structure du code (fichiers créés par notre équipe)
 
 ```
 Assets/
@@ -41,7 +41,7 @@ Assets/
 
 ---
 
-## 🚀 Comment lancer la simulation
+## Comment lancer la simulation
 
 ### Étape 1 — Importer les packages
 Importez les 3 assets Unity listés ci-dessus dans votre projet.
@@ -61,7 +61,7 @@ Appuyez sur **Play**. Utilisez les touches directionnelles pour conduire.
 
 ---
 
-## 🧠 Architecture technique — Comportement IA
+## Architecture technique — Comportement IA
 
 ```
 Détection SphereCast (2m rayon)
@@ -81,7 +81,7 @@ Détection SphereCast (2m rayon)
 
 ---
 
-## 🐛 Difficultés résolues
+##  Difficultés résolues
 
 | Problème | Solution |
 |---|---|
